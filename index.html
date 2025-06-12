@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="Planificateur pour techniciens" name="description"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Planificateur Techniciens</title>
+  <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0.9;
+        }
+
+        .filter-group input, .filter-group select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+        }
+
+        .filter-group input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40,167,69,0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        .week-nav {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .week-info {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .calendar-container {
+            overflow-x: auto;
+            padding: 20px;
+        }
+
+        .calendar-table {
+            width: 100%;
+            min-width: 1200px;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .calendar-table th {
+            background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .calendar-table td {
+            border: 1px solid #dee2e6;
+            padding: 0;
+            vertical-align: top;
+            min-width: 150px;
+        }
+
+        .tech-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-right: 2px solid #dee2e6;
+            min-width: 200px;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            position: relative;
+        }
+
+        .tech-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tech-info:hover .tech-actions {
+            opacity: 1;
+        }
+
+        .tech-btn {
+            width: 25px;
+            height: 25px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .tech-btn-edit {
+            background: #28a745;
+            color: white;
+        }
+
+        .tech-btn-edit:hover {
+            background: #218838;
+            transform: scale(1.1);
+        }
+
+        .tech-btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .tech-btn-delete:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .tech-name {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .tech-details {
+            font-size: 12px;
+            color: #6c757d;
+            line-height: 1.4;
+        }
+
+        .day-cell {
+            min-height: 120px;
+            padding: 8px;
+            background: white;
+            position: relative;
+        }
+
+        .day-header {
+            font-weight: 600;
+            color: #495057;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-align: center;
+            padding: 4px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .chantier-item {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .chantier-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 3px 10px rgba(23,162,184,0.3);
+        }
+
+        .chantier-hours {
+            font-weight: 700;
+            float: right;
+        }
+
+        .comment-area {
+            margin-top: 5px;
+            padding: 4px;
+            background: #fff3cd;
+            border-radius: 4px;
+            border-left: 3px solid #ffc107;
+            font-size: 11px;
+            min-height: 20px;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            animation: modalSlide 0.3s ease-out;
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+        }
+
+        .chantier-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .chantier-section h4 {
+            color: #17a2b8;
+            margin-bottom: 10px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .today {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+        }
+
+        .weekend {
+            background: #f8f9fa !important;
+        }
+
+        @media (max-width: 768px) {
+            .filters {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .week-nav {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Modal pour la gestion des listes (services & pôles) -->
+    <div id="manageListsModal" class="modal">
+      <div class="modal-content">
+          <span class="close" onclick="closeManageListsModal()">×</span>
+          <h2>Gérer les listes</h2>
+          <div>
+              <h3>Services</h3>
+              <ul id="servicesList"></ul>
+              <input type="text" id="newService" placeholder="Nouveau service">
+              <button onclick="addService()">Ajouter</button>
+          </div>
+          <div>
+              <h3>Pôles</h3>
+              <ul id="polesList"></ul>
+              <input type="text" id="newPole" placeholder="Nouveau pôle">
+              <button onclick="addPole()">Ajouter</button>
+          </div>
+      </div>
+    </div>
+
+    <!-- En-tête -->
+    <div class="header">
+      <button onclick="openManageListsModal()">Gérer les listes</button>
+      <h1>📅 Planificateur Techniciens</h1>
+      <div class="filters">
+          <div class="filter-group">
+              <label>Nom/Prénom</label>
+              <input id="filterName" placeholder="Rechercher un technicien..." type="text"/>
+          </div>
+          <div class="filter-group">
+              <label>Pôle</label>
+              <select id="filterPole">
+                <option value="">Tous les pôles</option>
+              </select>
+          </div>
+          <div class="filter-group">
+              <label>Chantier</label>
+              <input id="filterChantier" placeholder="Rechercher un chantier..." type="text"/>
+          </div>
+      </div>
+    </div>
+
+    <!-- Contrôles et Navigation -->
+    <div class="controls">
+      <button class="btn" onclick="addTechnician()">➕ Ajouter Technicien</button>
+      <button class="btn btn-secondary" onclick="exportData()">📊 Exporter Données</button>
+      <button class="btn btn-secondary" onclick="importData()">📥 Importer Données</button>
+      <div class="week-nav">
+          <button class="btn btn-secondary" onclick="changeWeek(-1)">← Semaine Précédente</button>
+          <span class="week-info" id="weekInfo">Semaine 24 - 2025</span>
+          <button class="btn btn-secondary" onclick="changeWeek(1)">Semaine Suivante →</button>
+      </div>
+    </div>
+
+    <!-- Calendrier -->
+    <div class="calendar-container">
+      <table class="calendar-table" id="calendarTable">
+        <thead>
+          <tr id="calendarHeader">
+            <th>Technicien</th>
+          </tr>
+        </thead>
+        <tbody id="calendarBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Technicien -->
+  <div class="modal" id="techModal">
+    <div class="modal-content">
+      <span class="close" onclick="closeTechModal()">×</span>
+      <h2 id="techModalTitle">Ajouter un Technicien</h2>
+      <form id="techForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom *</label>
+            <input id="techNom" required type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Prénom *</label>
+            <input id="techPrenom" required type="text"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Service</label>
+            <select id="techService">
+              <option value="">Sélectionnez un service</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Numéro Portable</label>
+            <input id="techPortable" type="tel"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="techEmail" type="email"/>
+        </div>
+        <button class="btn" type="submit">💾 Enregistrer</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Journée -->
+  <div class="modal" id="dayModal">
+    <div class="modal-content">
+      <span class="close" onclick="closeDayModal()">×</span>
+      <h2 id="dayModalTitle">Planification de la journée</h2>
+      <div class="form-group">
+        <label>Commentaire du jour</label>
+        <textarea id="dayComment" placeholder="Commentaire général pour cette journée..." rows="3"></textarea>
+      </div>
+      <div class="chantier-section">
+        <h4>🏗️ Chantier 1</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Chantier</label>
+            <input id="chantier1" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Pôle</label>
+            <input id="pole1" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Heures</label>
+            <input id="heures1" max="24" min="0" step="0.5" type="number"/>
+          </div>
+        </div>
+      </div>
+      <div class="chantier-section">
+        <h4>🏗️ Chantier 2</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Chantier</label>
+            <input id="chantier2" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Pôle</label>
+            <input id="pole2" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Heures</label>
+            <input id="heures2" max="24" min="0" step="0.5" type="number"/>
+          </div>
+        </div>
+      </div>
+      <div class="chantier-section">
+        <h4>🏗️ Chantier 3</h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Chantier</label>
+            <input id="chantier3" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Pôle</label>
+            <input id="pole3" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Heures</label>
+            <input id="heures3" max="24" min="0" step="0.5" type="number"/>
+          </div>
+        </div>
+      </div>
+      <button class="btn" onclick="saveDayData()" type="button">💾 Enregistrer la Journée</button>
+    </div>
+  </div>
+
+  <script>
+    let technicians = [];
+    let currentWeekStart = new Date();
+    let currentTechId = null;
+    let currentDate = null;
+    let availableServices = ["CVC", "ELEC", "GTC", "AUTOM"];
+    let availablePoles = ["PRO GTX", "PRO PTX", "PRO MAINT"];
+    let planningData = {};
+
+    // Initialisation unique au DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', function() {
+      setCurrentWeek();
+      loadSampleData();
+      generateCalendar();
+      setupFilters();
+      populateServiceDropdown();
+      // populatePoleDropdown();  // Si besoin d'un dropdown spécifique pour les pôles dans d'autres formulaires
+    });
+
+    function setCurrentWeek() {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      currentWeekStart = new Date(today);
+      currentWeekStart.setDate(today.getDate() + mondayOffset);
+    }
+
+    function loadSampleData() {
+      technicians = [
+        {
+          id: 1,
+          nom: 'Dupont',
+          prenom: 'Jean',
+          service: 'ELEC',
+          portable: '06.12.34.56.78',
+          email: 'jean.dupont@entreprise.fr'
+        },
+        {
+          id: 2,
+          nom: 'Martin',
+          prenom: 'Sophie',
+          service: 'CVC',
+          portable: '06.98.76.54.32',
+          email: 'sophie.martin@entreprise.fr'
+        }
+      ];
+    }
+
+    function generateCalendar() {
+      const header = document.getElementById('calendarHeader');
+      const body = document.getElementById('calendarBody');
+      
+      // Réinitialisation de l'en-tête et du corps
+      header.innerHTML = '<th>Technicien</th>';
+      body.innerHTML = '';
+
+      // Génération de l'en-tête avec dates
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeekStart);
+        date.setDate(currentWeekStart.getDate() + i);
+        
+        const th = document.createElement('th');
+        const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
+        const dayNum = date.getDate();
+        const monthName = date.toLocaleDateString('fr-FR', { month: 'short' });
+        th.innerHTML = `${dayName}<br>${dayNum} ${monthName}`;
+        
+        if (date.getDay() === 0 || date.getDay() === 6) {
+          th.classList.add('weekend');
+        }
+        
+        if (isToday(date)) {
+          th.classList.add('today');
+        }
+        header.appendChild(th);
+      }
+
+      // Mise à jour de l'information de semaine
+      const weekNumber = getWeekNumber(currentWeekStart);
+      document.getElementById('weekInfo').textContent =
+          `Semaine ${weekNumber} - ${currentWeekStart.getFullYear()}`;
+
+      // Génération d'une ligne pour chaque technicien filtré
+      const filteredTechs = getFilteredTechnicians();
+      filteredTechs.forEach(tech => {
+        const row = document.createElement('tr');
+        
+        // Cellule d'information du technicien
+        const techCell = document.createElement('td');
+        techCell.className = 'tech-info';
+        techCell.innerHTML = `
+          <div class="tech-actions">
+            <button class="tech-btn tech-btn-edit" onclick="event.stopPropagation(); editTechnician(${tech.id})" title="Modifier">✏️</button>
+            <button class="tech-btn tech-btn-delete" onclick="event.stopPropagation(); deleteTechnician(${tech.id})" title="Supprimer">🗑️</button>
+          </div>
+          <div class="tech-name">${tech.prenom} ${tech.nom}</div>
+          <div class="tech-details">
+            Service: ${tech.service || 'N/A'}<br>
+            📱 ${tech.portable || 'N/A'}<br>
+            ✉️ ${tech.email || 'N/A'}
+          </div>
+        `;
+        row.appendChild(techCell);
+
+        // Cellules pour chaque jour
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(currentWeekStart);
+          date.setDate(currentWeekStart.getDate() + i);
+          
+          const dayCell = document.createElement('td');
+          dayCell.className = 'day-cell';
+          dayCell.onclick = () => openDayModal(tech.id, date);
+          
+          if (date.getDay() === 0 || date.getDay() === 6) {
+            dayCell.classList.add('weekend');
+          }
+          
+          if (isToday(date)) {
+            dayCell.classList.add('today');
+          }
+
+          const dateKey = `${tech.id}_${date.toISOString().split('T')[0]}`;
+          const dayData = planningData[dateKey];
+
+          let cellContent = `<div class="day-header">${date.getDate()}</div>`;
+          
+          if (dayData) {
+            // Affichage des chantiers
+            for (let j = 1; j <= 3; j++) {
+              const chantier = dayData[`chantier${j}`];
+              const pole = dayData[`pole${j}`];
+              const heures = dayData[`heures${j}`];
+              if (chantier && heures) {
+                cellContent += `
+                  <div class="chantier-item">
+                    ${chantier} (${pole || 'N/A'})
+                    <span class="chantier-hours">${heures}h</span>
+                  </div>
+                `;
+              }
+            }
+            // Commentaire du jour
+            if (dayData.comment) {
+              cellContent += `<div class="comment-area">${dayData.comment}</div>`;
+            }
+          }
+          dayCell.innerHTML = cellContent;
+          row.appendChild(dayCell);
+        }
+        body.appendChild(row);
+      });
+    }
+
+    function getFilteredTechnicians() {
+      const nameFilter = document.getElementById('filterName').value.toLowerCase();
+      const poleFilter = document.getElementById('filterPole').value.toLowerCase();
+      const chantierFilter = document.getElementById('filterChantier').value.toLowerCase();
+
+      return technicians.filter(tech => {
+        const nameMatch = !nameFilter ||
+            tech.nom.toLowerCase().includes(nameFilter) ||
+            tech.prenom.toLowerCase().includes(nameFilter);
+        
+        // Utilisation des pôles définis dans availablePoles
+        const poleMatch = !poleFilter ||
+            (tech.service && tech.service.toLowerCase() === poleFilter);
+        
+        let chantierMatch = !chantierFilter;
+        if (chantierFilter) {
+          // Vérifier si un chantier correspond dans les données de planification
+          for (const key in planningData) {
+            if (key.startsWith(`${tech.id}_`)) {
+              const data = planningData[key];
+              for (let i = 1; i <= 3; i++) {
+                const chantier = data[`chantier${i}`];
+                if (chantier && chantier.toLowerCase().includes(chantierFilter)) {
+                  chantierMatch = true;
+                  break;
+                }
+              }
+            }
+            if (chantierMatch) break;
+          }
+        }
+        return nameMatch && poleMatch && chantierMatch;
+      });
+    }
+
+    function setupFilters() {
+      const filters = ['filterName', 'filterPole', 'filterChantier'];
+      filters.forEach(filterId => {
+        document.getElementById(filterId).addEventListener('input', generateCalendar);
+      });
+
+      // Remplissage du filtre "Pôle" en utilisant la liste availablePoles
+      const poleSelect = document.getElementById('filterPole');
+      poleSelect.innerHTML = '<option value="">Tous les pôles</option>';
+      availablePoles.forEach(pole => {
+        const option = document.createElement('option');
+        option.value = pole;
+        option.textContent = pole;
+        poleSelect.appendChild(option);
+      });
+    }
+
+    function addTechnician() {
+      currentTechId = null;
+      document.getElementById('techModalTitle').textContent = 'Ajouter un Technicien';
+      document.getElementById('techForm').reset();
+      document.getElementById('techModal').style.display = 'block';
+    }
+
+    function editTechnician(techId) {
+      const tech = technicians.find(t => t.id === techId);
+      if (!tech) {
+        alert('Technicien introuvable !');
+        return;
+      }
+      
+      currentTechId = techId;
+      document.getElementById('techModalTitle').textContent = 'Modifier le Technicien';
+      document.getElementById('techNom').value = tech.nom || '';
+      document.getElementById('techPrenom').value = tech.prenom || '';
+      document.getElementById('techService').value = tech.service || '';
+      document.getElementById('techPortable').value = tech.portable || '';
+      document.getElementById('techEmail').value = tech.email || '';
+      document.getElementById('techModal').style.display = 'block';
+    }
+
+    function deleteTechnician(techId) {
+      const tech = technicians.find(t => t.id === techId);
+      if (!tech) {
+        alert('Technicien introuvable !');
+        return;
+      }
+      
+      const confirmMessage = `Êtes-vous sûr de vouloir supprimer ${tech.prenom} ${tech.nom} ?\n\nToutes les données de planification associées seront également supprimées.`;
+      if (confirm(confirmMessage)) {
+        technicians = technicians.filter(t => t.id !== techId);
+        const keysToDelete = Object.keys(planningData).filter(key => key.startsWith(`${techId}_`));
+        keysToDelete.forEach(key => {
+          delete planningData[key];
+        });
+        setupFilters();
+        generateCalendar();
+        alert(`${tech.prenom} ${tech.nom} a été supprimé avec succès.`);
+      }
+    }
+
+    function closeTechModal() {
+      document.getElementById('techModal').style.display = 'none';
+    }
+
+    function openDayModal(techId, date) {
+      currentTechId = techId;
+      currentDate = date;
+      const tech = technicians.find(t => t.id === techId);
+      const dateStr = date.toLocaleDateString('fr-FR');
+      document.getElementById('dayModalTitle').textContent = `${tech.prenom} ${tech.nom} - ${dateStr}`;
+      
+      const dateKey = `${techId}_${date.toISOString().split('T')[0]}`;
+      const dayData = planningData[dateKey] || {};
+      
+      document.getElementById('dayComment').value = dayData.comment || '';
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById(`chantier${i}`).value = dayData[`chantier${i}`] || '';
+        document.getElementById(`pole${i}`).value = dayData[`pole${i}`] || '';
+        document.getElementById(`heures${i}`).value = dayData[`heures${i}`] || '';
+      }
+      document.getElementById('dayModal').style.display = 'block';
+    }
+
+    function closeDayModal() {
+      document.getElementById('dayModal').style.display = 'none';
+    }
+
+    function saveDayData() {
+      if (!currentTechId || !currentDate) return;
+      
+      // Vérification : s'assurer que les heures saisies restent dans une fourchette acceptable (0 à 24 par chantier)
+      for (let i = 1; i <= 3; i++) {
+        const heuresInput = document.getElementById(`heures${i}`);
+        if (heuresInput.value) {
+          const heures = parseFloat(heuresInput.value);
+          if (isNaN(heures) || heures < 0 || heures > 24) {
+            alert(`La valeur des heures pour chantier ${i} doit être comprise entre 0 et 24.`);
+            return;
+          }
+        }
+      }
+      
+      const dateKey = `${currentTechId}_${currentDate.toISOString().split('T')[0]}`;
+      const dayData = {
+        comment: document.getElementById('dayComment').value
+      };
+      for (let i = 1; i <= 3; i++) {
+        dayData[`chantier${i}`] = document.getElementById(`chantier${i}`).value;
+        dayData[`pole${i}`] = document.getElementById(`pole${i}`).value;
+        dayData[`heures${i}`] = document.getElementById(`heures${i}`).value;
+      }
+      planningData[dateKey] = dayData;
+      closeDayModal();
+      generateCalendar();
+    }
+
+    function changeWeek(direction) {
+      currentWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+      generateCalendar();
+    }
+
+    function isToday(date) {
+      const today = new Date();
+      return date.toDateString() === today.toDateString();
+    }
+
+    function getWeekNumber(date) {
+      const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+      const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+      return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    }
+
+    function exportData() {
+      const data = {
+        technicians: technicians,
+        planning: planningData,
+        exportDate: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `planning_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Fonction d'import de données JSON
+    function importData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = event => {
+          try {
+            const importedData = JSON.parse(event.target.result);
+            if (importedData.technicians && importedData.planning) {
+              technicians = importedData.technicians;
+              planningData = importedData.planning;
+              setupFilters();
+              generateCalendar();
+              alert('Import réussi !');
+            } else {
+              alert("Le fichier n'est pas au bon format.");
+            }
+          } catch (error) {
+            alert("Erreur lors de l'import : " + error);
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    // Formulaire de technicien
+    document.getElementById('techForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const techData = {
+        nom: document.getElementById('techNom').value.trim(),
+        prenom: document.getElementById('techPrenom').value.trim(),
+        service: document.getElementById('techService').value.trim(),
+        portable: document.getElementById('techPortable').value.trim(),
+        email: document.getElementById('techEmail').value.trim()
+      };
+      if (!techData.nom || !techData.prenom) {
+        alert('Le nom et le prénom sont obligatoires !');
+        return;
+      }
+      if (currentTechId) {
+        const techIndex = technicians.findIndex(t => t.id === currentTechId);
+        if (techIndex !== -1) {
+          technicians[techIndex] = { ...technicians[techIndex], ...techData };
+        }
+      } else {
+        const maxId = technicians.length > 0 ? Math.max(...technicians.map(t => t.id)) : 0;
+        techData.id = maxId + 1;
+        technicians.push(techData);
+      }
+      closeTechModal();
+      setupFilters();
+      generateCalendar();
+    });
+
+    // Fermeture des modals en cliquant hors de la modal
+    window.onclick = function(event) {
+      const techModal = document.getElementById('techModal');
+      const dayModal = document.getElementById('dayModal');
+      if (event.target === techModal) {
+        techModal.style.display = 'none';
+      }
+      if (event.target === dayModal) {
+        dayModal.style.display = 'none';
+      }
+    };
+
+    function openManageListsModal() {
+      document.getElementById('manageListsModal').style.display = 'block';
+      updateListsDisplay();
+    }
+
+    function closeManageListsModal() {
+      document.getElementById('manageListsModal').style.display = 'none';
+    }
+
+    function updateListsDisplay() {
+      const servicesList = document.getElementById('servicesList');
+      const polesList = document.getElementById('polesList');
+      servicesList.innerHTML = availableServices.map(service => `<li>${service}</li>`).join('');
+      polesList.innerHTML = availablePoles.map(pole => `<li>${pole}</li>`).join('');
+    }
+
+    function addService() {
+      const newServiceInput = document.getElementById('newService');
+      const newService = newServiceInput.value.trim();
+      if (newService && !availableServices.includes(newService)) {
+        availableServices.push(newService);
+        newServiceInput.value = '';
+        updateListsDisplay();
+        populateServiceDropdown();
+      }
+    }
+
+    function addPole() {
+      const newPoleInput = document.getElementById('newPole');
+      const newPole = newPoleInput.value.trim();
+      if (newPole && !availablePoles.includes(newPole)) {
+        availablePoles.push(newPole);
+        newPoleInput.value = '';
+        updateListsDisplay();
+        setupFilters();
+      }
+    }
+
+    function populateServiceDropdown() {
+      const techServiceDropdown = document.getElementById('techService');
+      techServiceDropdown.innerHTML = '<option value="">Sélectionnez un service</option>' +
+          availableServices.map(service => `<option value="${service}">${service}</option>`).join('');
+    }
+  </script>
+</body>
+</html>
