@@ -380,6 +380,23 @@
             background: #f8f9fa !important;
         }
 
+        .calendar-table th.weekend {
+            background: linear-gradient(135deg, #5a6268 0%, #40464d 100%) !important;
+        }
+
+        .calendar-table td.weekend {
+            background: #e9ecef !important;
+        }
+
+        .calendar-table th.today {
+            background: linear-gradient(135deg, #f0ad4e 0%, #ed9d22 100%) !important;
+            color: #fff;
+        }
+
+        .calendar-table td.today {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+        }
+
         @media (max-width: 768px) {
             .filters {
                 flex-direction: column;
@@ -444,12 +461,13 @@
     <!-- Contrôles et Navigation -->
     <div class="controls">
       <button class="btn" onclick="addTechnician()">➕ Ajouter Technicien</button>
-      <button class="btn btn-secondary" onclick="exportData()">📊 Exporter Données</button>
-      <button class="btn btn-secondary" onclick="importData()">📥 Importer Données</button>
+      <button class="btn btn-secondary" onclick="exportData">📊 Exporter Données</button>
+      <button class="btn btn-secondary" onclick="importData">📥 Importer Données</button>
       <div class="week-nav">
-          <button class="btn btn-secondary" onclick="changeWeek(-1)">← Semaine Précédente</button>
+          <button class="btn btn-secondary" onclick="changeWeek(-1)" id="prevPeriodBtn">← Semaine Précédente</button>
           <span class="week-info" id="weekInfo">Semaine 24 - 2025</span>
-          <button class="btn btn-secondary" onclick="changeWeek(1)">Semaine Suivante →</button>
+          <button class="btn btn-secondary" onclick="changeWeek(1)" id="nextPeriodBtn">Semaine Suivante →</button>
+          <button class="btn btn-secondary" onclick="toggleViewMode()" id="toggleViewBtn">Vue Mensuelle</button>
       </div>
     </div>
 
@@ -494,9 +512,27 @@
             <input id="techPortable" type="tel"/>
           </div>
         </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input id="techEmail" type="email"/>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Pôle</label>
+            <select id="techPole">
+              <option value="">Sélectionnez un pôle</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input id="techEmail" type="email"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>N° Immatriculation</label>
+            <input id="techImmatriculation" type="text"/>
+          </div>
+          <div class="form-group">
+            <label>Ville</label>
+            <input id="techVille" type="text"/>
+          </div>
         </div>
         <button class="btn" type="submit">💾 Enregistrer</button>
       </form>
@@ -521,11 +557,23 @@
           </div>
           <div class="form-group">
             <label>Pôle</label>
-            <input id="pole1" type="text"/>
+            <select id="pole1">
+              <option value="">Sélectionnez un pôle</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Heures</label>
             <input id="heures1" max="24" min="0" step="0.5" type="number"/>
+          </div>
+        </div>
+        <!-- Nouveaux champs pour la duplication -->
+        <div class="form-row" style="margin-top: 10px; align-items: flex-end;">
+          <div class="form-group" style="flex: 2;">
+            <label>Dupliquer jusqu'à (jours ouvrés)</label>
+            <input type="date" id="duplicateUntilDate"/>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <button class="btn btn-secondary" type="button" onclick="confirmAndDuplicateChantier()">Dupliquer</button>
           </div>
         </div>
       </div>
@@ -538,7 +586,9 @@
           </div>
           <div class="form-group">
             <label>Pôle</label>
-            <input id="pole2" type="text"/>
+            <select id="pole2">
+              <option value="">Sélectionnez un pôle</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Heures</label>
@@ -555,7 +605,9 @@
           </div>
           <div class="form-group">
             <label>Pôle</label>
-            <input id="pole3" type="text"/>
+            <select id="pole3">
+              <option value="">Sélectionnez un pôle</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Heures</label>
@@ -575,14 +627,16 @@
     let availableServices = ["CVC", "ELEC", "GTC", "AUTOM"];
     let availablePoles = ["PRO GTX", "PRO PTX", "PRO MAINT"];
     let planningData = {};
+    let currentViewMode = 'week'; // 'week' ou 'month'
 
     // Initialisation unique au DOMContentLoaded
     document.addEventListener('DOMContentLoaded', function() {
+      loadDataFromLocalStorage(); // Charger les données au démarrage
       setCurrentWeek();
-      loadSampleData();
       generateCalendar();
       setupFilters();
       populateServiceDropdown();
+      populatePoleDropdownForTechModal();
       // populatePoleDropdown();  // Si besoin d'un dropdown spécifique pour les pôles dans d'autres formulaires
     });
 
@@ -623,101 +677,267 @@
       header.innerHTML = '<th>Technicien</th>';
       body.innerHTML = '';
 
-      // Génération de l'en-tête avec dates
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(currentWeekStart);
-        date.setDate(currentWeekStart.getDate() + i);
-        
-        const th = document.createElement('th');
-        const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
-        const dayNum = date.getDate();
-        const monthName = date.toLocaleDateString('fr-FR', { month: 'short' });
-        th.innerHTML = `${dayName}<br>${dayNum} ${monthName}`;
-        
-        if (date.getDay() === 0 || date.getDay() === 6) {
-          th.classList.add('weekend');
-        }
-        
-        if (isToday(date)) {
-          th.classList.add('today');
-        }
-        header.appendChild(th);
-      }
+      const toggleViewBtn = document.getElementById('toggleViewBtn');
+      const prevPeriodBtn = document.getElementById('prevPeriodBtn');
+      const nextPeriodBtn = document.getElementById('nextPeriodBtn');
 
-      // Mise à jour de l'information de semaine
-      const weekNumber = getWeekNumber(currentWeekStart);
-      document.getElementById('weekInfo').textContent =
-          `Semaine ${weekNumber} - ${currentWeekStart.getFullYear()}`;
-
-      // Génération d'une ligne pour chaque technicien filtré
-      const filteredTechs = getFilteredTechnicians();
-      filteredTechs.forEach(tech => {
-        const row = document.createElement('tr');
-        
-        // Cellule d'information du technicien
-        const techCell = document.createElement('td');
-        techCell.className = 'tech-info';
-        techCell.innerHTML = `
-          <div class="tech-actions">
-            <button class="tech-btn tech-btn-edit" onclick="event.stopPropagation(); editTechnician(${tech.id})" title="Modifier">✏️</button>
-            <button class="tech-btn tech-btn-delete" onclick="event.stopPropagation(); deleteTechnician(${tech.id})" title="Supprimer">🗑️</button>
-          </div>
-          <div class="tech-name">${tech.prenom} ${tech.nom}</div>
-          <div class="tech-details">
-            Service: ${tech.service || 'N/A'}<br>
-            📱 ${tech.portable || 'N/A'}<br>
-            ✉️ ${tech.email || 'N/A'}
-          </div>
-        `;
-        row.appendChild(techCell);
-
-        // Cellules pour chaque jour
+      if (currentViewMode === 'week') {
+        toggleViewBtn.textContent = 'Vue Mensuelle';
+        prevPeriodBtn.innerHTML = '← Semaine Précédente';
+        nextPeriodBtn.innerHTML = 'Semaine Suivante →';
+        // Génération de l'en-tête avec dates (vue semaine)
         for (let i = 0; i < 7; i++) {
           const date = new Date(currentWeekStart);
           date.setDate(currentWeekStart.getDate() + i);
           
-          const dayCell = document.createElement('td');
-          dayCell.className = 'day-cell';
-          dayCell.onclick = () => openDayModal(tech.id, date);
+          const th = document.createElement('th');
+          const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
+          const dayNum = date.getDate();
+          const monthName = date.toLocaleDateString('fr-FR', { month: 'short' });
+          th.innerHTML = `${dayName}<br>${dayNum} ${monthName}`;
           
           if (date.getDay() === 0 || date.getDay() === 6) {
-            dayCell.classList.add('weekend');
+            th.classList.add('weekend');
           }
           
           if (isToday(date)) {
-            dayCell.classList.add('today');
+            th.classList.add('today');
           }
+          header.appendChild(th);
+        }
 
-          const dateKey = `${tech.id}_${date.toISOString().split('T')[0]}`;
-          const dayData = planningData[dateKey];
+        // Mise à jour de l'information de semaine
+        const weekNumber = getWeekNumber(currentWeekStart);
+        document.getElementById('weekInfo').textContent =
+            `Semaine ${weekNumber} - ${currentWeekStart.getFullYear()}`;
 
-          let cellContent = `<div class="day-header">${date.getDate()}</div>`;
+        // Génération d'une ligne pour chaque technicien filtré (vue semaine)
+        const filteredTechs = getFilteredTechnicians();
+        filteredTechs.forEach(tech => {
+          const row = document.createElement('tr');
           
-          if (dayData) {
-            // Affichage des chantiers
-            for (let j = 1; j <= 3; j++) {
-              const chantier = dayData[`chantier${j}`];
-              const pole = dayData[`pole${j}`];
-              const heures = dayData[`heures${j}`];
-              if (chantier && heures) {
-                cellContent += `
-                  <div class="chantier-item">
-                    ${chantier} (${pole || 'N/A'})
-                    <span class="chantier-hours">${heures}h</span>
-                  </div>
-                `;
+          // Cellule d'information du technicien
+          const techCell = document.createElement('td');
+          techCell.className = 'tech-info';
+          techCell.innerHTML = `
+            <div class="tech-actions">
+              <button class="tech-btn tech-btn-edit" onclick="event.stopPropagation(); editTechnician(${tech.id})" title="Modifier">✏️</button>
+              <button class="tech-btn tech-btn-delete" onclick="event.stopPropagation(); deleteTechnician(${tech.id})" title="Supprimer">🗑️</button>
+            </div>
+            <div class="tech-name">${tech.prenom} ${tech.nom}</div>
+            <div class="tech-details">
+              Service: ${tech.service || 'N/A'}<br>
+              Pôle: ${tech.pole || 'N/A'}<br>
+              📱 ${tech.portable || 'N/A'}<br>
+              ✉️ ${tech.email || 'N/A'}<br>
+              🚗 ${tech.immatriculation || 'N/A'}<br>
+              🏙️ ${tech.ville || 'N/A'}
+            </div>
+          `;
+          row.appendChild(techCell);
+
+          // Cellules pour chaque jour (vue semaine)
+          for (let i = 0; i < 7; i++) {
+            const date = new Date(currentWeekStart);
+            date.setDate(currentWeekStart.getDate() + i);
+            
+            const dayCell = document.createElement('td');
+            dayCell.className = 'day-cell';
+            dayCell.onclick = () => openDayModal(tech.id, date);
+            
+            if (date.getDay() === 0 || date.getDay() === 6) {
+              dayCell.classList.add('weekend');
+            }
+            
+            if (isToday(date)) {
+              dayCell.classList.add('today');
+            }
+
+            const dateKey = `${tech.id}_${date.toISOString().split('T')[0]}`;
+            const dayData = planningData[dateKey];
+
+            let cellContent = `<div class="day-header">${date.getDate()}</div>`;
+            
+            if (dayData) {
+              // Affichage des chantiers
+              for (let j = 1; j <= 3; j++) {
+                const chantier = dayData[`chantier${j}`];
+                const pole = dayData[`pole${j}`];
+                const heures = dayData[`heures${j}`];
+                if (chantier && heures) {
+                  cellContent += `
+                    <div class="chantier-item">
+                      ${chantier} (${pole || 'N/A'})
+                      <span class="chantier-hours">${heures}h</span>
+                    </div>
+                  `;
+                }
+              }
+              // Commentaire du jour
+              if (dayData.comment) {
+                cellContent += `<div class="comment-area">${dayData.comment}</div>`;
               }
             }
-            // Commentaire du jour
-            if (dayData.comment) {
-              cellContent += `<div class="comment-area">${dayData.comment}</div>`;
-            }
+            dayCell.innerHTML = cellContent;
+            row.appendChild(dayCell);
           }
-          dayCell.innerHTML = cellContent;
-          row.appendChild(dayCell);
+          body.appendChild(row);
+        });
+
+        // Nouvelle ligne pour le total des heures
+        const totalRow = document.createElement('tr');
+        const totalLabelCell = document.createElement('td');
+        totalLabelCell.className = 'tech-info';
+        totalLabelCell.innerHTML = '<div class="tech-name">Total Heures</div>';
+        totalRow.appendChild(totalLabelCell);
+
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(currentWeekStart);
+          date.setDate(currentWeekStart.getDate() + i);
+          const totalHoursForDay = calculateTotalHoursForDay(date, filteredTechs);
+          const totalHoursCell = document.createElement('td');
+          totalHoursCell.className = 'day-cell';
+          if (date.getDay() === 0 || date.getDay() === 6) {
+            totalHoursCell.classList.add('weekend');
+          }
+          if (isToday(date)) {
+            totalHoursCell.classList.add('today');
+          }
+          totalHoursCell.innerHTML = `<div class="day-header">${totalHoursForDay}h</div>`;
+          totalRow.appendChild(totalHoursCell);
         }
-        body.appendChild(row);
-      });
+        body.appendChild(totalRow);
+
+      } else { // currentViewMode === 'month'
+        toggleViewBtn.textContent = 'Vue Hebdomadaire';
+        const year = currentWeekStart.getFullYear();
+        const month = currentWeekStart.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1);
+        const lastDayOfMonth = new Date(year, month + 1, 0);
+        const numDays = lastDayOfMonth.getDate();
+
+        prevPeriodBtn.innerHTML = '← Mois Précédent';
+        nextPeriodBtn.innerHTML = 'Mois Suivant →';
+
+        // Génération de l'en-tête avec dates (vue mois)
+        for (let i = 1; i <= numDays; i++) {
+          const date = new Date(year, month, i);
+          
+          const th = document.createElement('th');
+          const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
+          const dayNum = date.getDate();
+          th.innerHTML = `${dayName}<br>${dayNum}`;
+          
+          if (date.getDay() === 0 || date.getDay() === 6) {
+            th.classList.add('weekend');
+          }
+          
+          if (isToday(date)) {
+            th.classList.add('today');
+          }
+          header.appendChild(th);
+        }
+
+        // Mise à jour de l'information du mois
+        document.getElementById('weekInfo').textContent =
+            `${firstDayOfMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`;
+
+        // Génération d'une ligne pour chaque technicien filtré (vue mois)
+        const filteredTechs = getFilteredTechnicians();
+        filteredTechs.forEach(tech => {
+          const row = document.createElement('tr');
+          
+          // Cellule d'information du technicien
+          const techCell = document.createElement('td');
+          techCell.className = 'tech-info';
+          techCell.innerHTML = `
+            <div class="tech-actions">
+              <button class="tech-btn tech-btn-edit" onclick="event.stopPropagation(); editTechnician(${tech.id})" title="Modifier">✏️</button>
+              <button class="tech-btn tech-btn-delete" onclick="event.stopPropagation(); deleteTechnician(${tech.id})" title="Supprimer">🗑️</button>
+            </div>
+            <div class="tech-name">${tech.prenom} ${tech.nom}</div>
+            <div class="tech-details">
+              Service: ${tech.service || 'N/A'}<br>
+              Pôle: ${tech.pole || 'N/A'}<br>
+              📱 ${tech.portable || 'N/A'}<br>
+              ✉️ ${tech.email || 'N/A'}<br>
+              🚗 ${tech.immatriculation || 'N/A'}<br>
+              🏙️ ${tech.ville || 'N/A'}
+            </div>
+          `;
+          row.appendChild(techCell);
+
+          // Cellules pour chaque jour du mois
+          for (let i = 1; i <= numDays; i++) {
+            const date = new Date(year, month, i);
+            
+            const dayCell = document.createElement('td');
+            dayCell.className = 'day-cell';
+            dayCell.onclick = () => openDayModal(tech.id, date);
+            
+            if (date.getDay() === 0 || date.getDay() === 6) {
+              dayCell.classList.add('weekend');
+            }
+            
+            if (isToday(date)) {
+              dayCell.classList.add('today');
+            }
+
+            const dateKey = `${tech.id}_${date.toISOString().split('T')[0]}`;
+            const dayData = planningData[dateKey];
+
+            let cellContent = `<div class="day-header">${date.getDate()}</div>`;
+            
+            if (dayData) {
+              // Affichage des chantiers
+              for (let j = 1; j <= 3; j++) {
+                const chantier = dayData[`chantier${j}`];
+                const pole = dayData[`pole${j}`];
+                const heures = dayData[`heures${j}`];
+                if (chantier && heures) {
+                  cellContent += `
+                    <div class="chantier-item">
+                      ${chantier} (${pole || 'N/A'})
+                      <span class="chantier-hours">${heures}h</span>
+                    </div>
+                  `;
+                }
+              }
+              // Commentaire du jour
+              if (dayData.comment) {
+                cellContent += `<div class="comment-area">${dayData.comment}</div>`;
+              }
+            }
+            dayCell.innerHTML = cellContent;
+            row.appendChild(dayCell);
+          }
+          body.appendChild(row);
+        });
+
+        // Nouvelle ligne pour le total des heures (vue mois)
+        const totalRow = document.createElement('tr');
+        const totalLabelCell = document.createElement('td');
+        totalLabelCell.className = 'tech-info';
+        totalLabelCell.innerHTML = '<div class="tech-name">Total Heures</div>';
+        totalRow.appendChild(totalLabelCell);
+
+        for (let i = 1; i <= numDays; i++) {
+          const date = new Date(year, month, i);
+          const totalHoursForDay = calculateTotalHoursForDay(date, filteredTechs);
+          const totalHoursCell = document.createElement('td');
+          totalHoursCell.className = 'day-cell';
+          if (date.getDay() === 0 || date.getDay() === 6) {
+            totalHoursCell.classList.add('weekend');
+          }
+          if (isToday(date)) {
+            totalHoursCell.classList.add('today');
+          }
+          totalHoursCell.innerHTML = `<div class="day-header">${totalHoursForDay}h</div>`;
+          totalRow.appendChild(totalHoursCell);
+        }
+        body.appendChild(totalRow);
+
+      }
     }
 
     function getFilteredTechnicians() {
@@ -732,7 +952,7 @@
         
         // Utilisation des pôles définis dans availablePoles
         const poleMatch = !poleFilter ||
-            (tech.service && tech.service.toLowerCase() === poleFilter);
+            (tech.pole && tech.pole.toLowerCase() === poleFilter);
         
         let chantierMatch = !chantierFilter;
         if (chantierFilter) {
@@ -793,6 +1013,11 @@
       document.getElementById('techService').value = tech.service || '';
       document.getElementById('techPortable').value = tech.portable || '';
       document.getElementById('techEmail').value = tech.email || '';
+      document.getElementById('techImmatriculation').value = tech.immatriculation || '';
+      document.getElementById('techVille').value = tech.ville || '';
+      populateServiceDropdown();
+      populatePoleDropdownForTechModal();
+      document.getElementById('techPole').value = tech.pole || '';
       document.getElementById('techModal').style.display = 'block';
     }
 
@@ -810,6 +1035,7 @@
         keysToDelete.forEach(key => {
           delete planningData[key];
         });
+        saveDataToLocalStorage(); // Sauvegarder les données après suppression
         setupFilters();
         generateCalendar();
         alert(`${tech.prenom} ${tech.nom} a été supprimé avec succès.`);
@@ -832,10 +1058,12 @@
       
       document.getElementById('dayComment').value = dayData.comment || '';
       for (let i = 1; i <= 3; i++) {
+        populatePoleDropdownForChantier(`pole${i}`);
         document.getElementById(`chantier${i}`).value = dayData[`chantier${i}`] || '';
         document.getElementById(`pole${i}`).value = dayData[`pole${i}`] || '';
         document.getElementById(`heures${i}`).value = dayData[`heures${i}`] || '';
       }
+      document.getElementById('duplicateUntilDate').value = ''; // Réinitialiser le champ de duplication
       document.getElementById('dayModal').style.display = 'block';
     }
 
@@ -868,12 +1096,17 @@
         dayData[`heures${i}`] = document.getElementById(`heures${i}`).value;
       }
       planningData[dateKey] = dayData;
+      saveDataToLocalStorage(); // Sauvegarder les données après la sauvegarde du jour
       closeDayModal();
       generateCalendar();
     }
 
     function changeWeek(direction) {
-      currentWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+      if (currentViewMode === 'week') {
+        currentWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+      } else { // month view
+        currentWeekStart.setMonth(currentWeekStart.getMonth() + direction);
+      }
       generateCalendar();
     }
 
@@ -918,6 +1151,9 @@
             if (importedData.technicians && importedData.planning) {
               technicians = importedData.technicians;
               planningData = importedData.planning;
+              availableServices = importedData.availableServices || availableServices; // Garder les anciens si non présents
+              availablePoles = importedData.availablePoles || availablePoles; // Garder les anciens si non présents
+              saveDataToLocalStorage(); // Sauvegarder les données après l'import
               setupFilters();
               generateCalendar();
               alert('Import réussi !');
@@ -941,7 +1177,10 @@
         prenom: document.getElementById('techPrenom').value.trim(),
         service: document.getElementById('techService').value.trim(),
         portable: document.getElementById('techPortable').value.trim(),
-        email: document.getElementById('techEmail').value.trim()
+        email: document.getElementById('techEmail').value.trim(),
+        immatriculation: document.getElementById('techImmatriculation').value.trim(),
+        ville: document.getElementById('techVille').value.trim(),
+        pole: document.getElementById('techPole').value.trim()
       };
       if (!techData.nom || !techData.prenom) {
         alert('Le nom et le prénom sont obligatoires !');
@@ -957,6 +1196,7 @@
         techData.id = maxId + 1;
         technicians.push(techData);
       }
+      saveDataToLocalStorage(); // Sauvegarder les données après modification
       closeTechModal();
       setupFilters();
       generateCalendar();
@@ -998,6 +1238,7 @@
         newServiceInput.value = '';
         updateListsDisplay();
         populateServiceDropdown();
+        saveDataToLocalStorage(); // Sauvegarder les données après modification
       }
     }
 
@@ -1009,6 +1250,7 @@
         newPoleInput.value = '';
         updateListsDisplay();
         setupFilters();
+        saveDataToLocalStorage(); // Sauvegarder les données après modification
       }
     }
 
@@ -1016,6 +1258,128 @@
       const techServiceDropdown = document.getElementById('techService');
       techServiceDropdown.innerHTML = '<option value="">Sélectionnez un service</option>' +
           availableServices.map(service => `<option value="${service}">${service}</option>`).join('');
+    }
+
+    function populatePoleDropdownForTechModal() {
+      const techPoleDropdown = document.getElementById('techPole');
+      techPoleDropdown.innerHTML = '<option value="">Sélectionnez un pôle</option>' +
+          availablePoles.map(pole => `<option value="${pole}">${pole}</option>`).join('');
+    }
+
+    function populatePoleDropdownForChantier(elementId) {
+      const poleDropdown = document.getElementById(elementId);
+      poleDropdown.innerHTML = '<option value="">Sélectionnez un pôle</option>' +
+          availablePoles.map(pole => `<option value="${pole}">${pole}</option>`).join('');
+    }
+
+    function toggleViewMode() {
+      currentViewMode = currentViewMode === 'week' ? 'month' : 'week';
+      generateCalendar();
+    }
+
+    function calculateTotalHoursForDay(date, filteredTechs) {
+      let totalHours = 0;
+      const dateStr = date.toISOString().split('T')[0];
+      filteredTechs.forEach(tech => {
+        const dateKey = `${tech.id}_${dateStr}`;
+        const dayData = planningData[dateKey];
+        if (dayData) {
+          for (let j = 1; j <= 3; j++) {
+            const heures = parseFloat(dayData[`heures${j}`]);
+            if (!isNaN(heures)) {
+              totalHours += heures;
+            }
+          }
+        }
+      });
+      return totalHours.toFixed(1); // Arrondir à une décimale
+    }
+
+    function saveDataToLocalStorage() {
+      localStorage.setItem('technicians', JSON.stringify(technicians));
+      localStorage.setItem('planningData', JSON.stringify(planningData));
+      localStorage.setItem('availableServices', JSON.stringify(availableServices));
+      localStorage.setItem('availablePoles', JSON.stringify(availablePoles));
+    }
+
+    function loadDataFromLocalStorage() {
+      const storedTechnicians = localStorage.getItem('technicians');
+      const storedPlanningData = localStorage.getItem('planningData');
+      const storedServices = localStorage.getItem('availableServices');
+      const storedPoles = localStorage.getItem('availablePoles');
+
+      if (storedTechnicians && storedPlanningData && storedServices && storedPoles) {
+        technicians = JSON.parse(storedTechnicians);
+        planningData = JSON.parse(storedPlanningData);
+        availableServices = JSON.parse(storedServices);
+        availablePoles = JSON.parse(storedPoles);
+      } else {
+        loadSampleData(); // Charger les données d'exemple si aucune donnée n'est stockée
+      }
+    }
+
+    function confirmAndDuplicateChantier() {
+      if (!currentTechId || !currentDate) {
+        alert("Veuillez sélectionner un technicien et une date pour dupliquer.");
+        return;
+      }
+
+      const duplicateUntilDate = document.getElementById('duplicateUntilDate').value;
+      if (!duplicateUntilDate) {
+        alert("Veuillez spécifier une date jusqu'à laquelle dupliquer.");
+        return;
+      }
+
+      const confirmation = confirm("Êtes-vous sûr de vouloir dupliquer la saisie du chantier 1 pour les jours ouvrés jusqu'à la date spécifiée ? Cela écrasera les saisies existantes.");
+      if (confirmation) {
+        duplicateChantier();
+      }
+    }
+
+    function duplicateChantier() {
+      const chantier1 = document.getElementById('chantier1').value;
+      const pole1 = document.getElementById('pole1').value;
+      const heures1 = parseFloat(document.getElementById('heures1').value);
+
+      if (!chantier1 || isNaN(heures1) || heures1 <= 0) {
+        alert("Veuillez saisir un chantier et des heures valides pour la duplication.");
+        return;
+      }
+
+      const startDate = new Date(currentDate);
+      startDate.setDate(startDate.getDate() + 1); // Commencer à dupliquer à partir du jour suivant
+      const endDate = new Date(document.getElementById('duplicateUntilDate').value);
+
+      let duplicatedCount = 0;
+
+      for (let d = startDate; d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dayOfWeek = d.getDay(); // 0 = Dimanche, 1 = Lundi, ..., 6 = Samedi
+
+        // Dupliquer uniquement les jours ouvrés (Lundi à Vendredi)
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+          let hoursToApply = heures1;
+          // Règle pour le vendredi : si heures > 8h, dupliquer 4h uniquement
+          if (dayOfWeek === 5 && heures1 > 8) {
+            hoursToApply = 4;
+          }
+
+          const dateKey = `${currentTechId}_${d.toISOString().split('T')[0]}`;
+          const existingDayData = planningData[dateKey] || {};
+
+          planningData[dateKey] = {
+            ...existingDayData,
+            chantier1: chantier1,
+            pole1: pole1,
+            heures1: hoursToApply.toFixed(1) // Sauvegarder avec une décimale
+          };
+          duplicatedCount++;
+        }
+      }
+
+      saveDataToLocalStorage();
+      closeDayModal();
+      generateCalendar();
+      alert(`Duplication terminée. ${duplicatedCount} entrées ont été ajoutées/mises à jour.`);
     }
   </script>
 </body>
